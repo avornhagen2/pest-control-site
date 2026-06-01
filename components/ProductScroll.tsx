@@ -155,18 +155,17 @@ export default function ProductScroll() {
   const panelRefs = [panel1Ref, panel2Ref, panel3Ref];
 
   return (
-    <>
-      {/*
-        Hidden video lives outside both display sections so it loads on every
-        viewport size — display:none on the parent would block metadata on mobile.
-      */}
+    // Wrapper gives the absolute-positioned video a layout context on all viewports.
+    // display:none on a parent blocks iOS Safari from loading video metadata.
+    <div className="relative">
       <video
         ref={videoRef}
         muted
         playsInline
         preload="auto"
-        className="hidden"
         aria-hidden="true"
+        className="absolute opacity-0 pointer-events-none"
+        style={{ width: 1, height: 1 }}
       >
         <source src="/videos/rotating-pest-control-backpack.mp4" type="video/mp4" />
       </video>
@@ -214,9 +213,14 @@ export default function ProductScroll() {
       >
         {/* Canvas is sticky — frames are drawn by the ScrollTrigger above */}
         <div className="sticky top-0 z-10 h-[45dvh] bg-zinc-800 overflow-hidden flex items-center justify-center">
+          {/*
+            object-fit:contain is unreliable on <canvas> in Safari.
+            max-w-full + max-h-full with auto dimensions achieves the same
+            contain behavior using the canvas's natural intrinsic size.
+          */}
           <canvas
             ref={mobileCanvasRef}
-            className="w-full h-full object-contain"
+            className="max-w-full max-h-full w-auto h-auto block"
           />
           <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-white pointer-events-none" />
         </div>
@@ -233,6 +237,6 @@ export default function ProductScroll() {
           ))}
         </div>
       </section>
-    </>
+    </div>
   );
 }
