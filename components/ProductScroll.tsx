@@ -57,6 +57,11 @@ export default function ProductScroll() {
         const onSeeked = () => resolve();
         video.addEventListener("seeked", onSeeked, { once: true });
         video.currentTime = t;
+        // iOS may never fire seeked if data isn't buffered yet — bail after 400 ms
+        setTimeout(() => {
+          video.removeEventListener("seeked", onSeeked);
+          resolve();
+        }, 400);
       });
 
     const init = async () => {
@@ -110,6 +115,11 @@ export default function ProductScroll() {
           const mobileCtx = mobileCanvas.getContext("2d")!;
           mobileCtx.drawImage(video, 0, 0, mobileCanvas.width, mobileCanvas.height);
 
+          // iOS ignores preload; draw from the video element whenever it seeks
+          const drawFrame = () =>
+            mobileCtx.drawImage(video, 0, 0, mobileCanvas.width, mobileCanvas.height);
+          video.addEventListener("seeked", drawFrame);
+
           ScrollTrigger.create({
             trigger: mobileSection,
             start: "top top",
@@ -118,11 +128,18 @@ export default function ProductScroll() {
             onUpdate(self) {
               const idx = Math.round(self.progress * totalFrames);
               const frame = frames[idx];
-              if (frame) mobileCtx.drawImage(frame, 0, 0, mobileCanvas.width, mobileCanvas.height);
+              if (frame) {
+                mobileCtx.drawImage(frame, 0, 0, mobileCanvas.width, mobileCanvas.height);
+              } else {
+                // frames not yet extracted — seek video directly; drawFrame fires on seeked
+                video.currentTime = self.progress * video.duration;
+              }
             },
           });
 
-          return () => {};
+          return () => {
+            video.removeEventListener("seeked", drawFrame);
+          };
         });
       });
 
@@ -142,6 +159,8 @@ export default function ProductScroll() {
       init();
     } else {
       video.addEventListener("loadedmetadata", onMetadata, { once: true });
+      // iOS Safari ignores `preload`; explicit load() triggers the network fetch
+      video.load();
     }
 
     return () => {
