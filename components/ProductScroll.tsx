@@ -34,7 +34,33 @@ export default function ProductScroll() {
   const panel1Ref = useRef<HTMLDivElement>(null);
   const panel2Ref = useRef<HTMLDivElement>(null);
   const panel3Ref = useRef<HTMLDivElement>(null);
+  const mobileVideoRef = useRef<HTMLVideoElement>(null);
+  const mobilePanelRefs = useRef<(HTMLDivElement | null)[]>([null, null, null]);
   const reduce = useReducedMotion();
+
+  // Mobile video autoplay trigger
+  useEffect(() => {
+    mobileVideoRef.current?.play().catch(() => {});
+  }, []);
+
+  // Mobile panel fade-in on scroll
+  useEffect(() => {
+    if (reduce) return;
+    const els = mobilePanelRefs.current.filter((r): r is HTMLDivElement => r !== null);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            (entry.target as HTMLElement).style.opacity = "1";
+            (entry.target as HTMLElement).style.transform = "translateY(0)";
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+    els.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [reduce]);
 
   useEffect(() => {
     if (reduce) return;
@@ -197,20 +223,37 @@ export default function ProductScroll() {
         </div>
       </section>
 
-      {/* ── Mobile: static stacked layout ── */}
-      <section className="lg:hidden bg-white border-t border-zinc-100 py-16 px-6">
-        <video
-          muted
-          playsInline
-          autoPlay
-          loop
-          className="w-full max-h-56 object-contain mb-12"
-        >
-          <source src="/videos/rotating-pest-control-backpack.mp4" type="video/mp4" />
-        </video>
-        <div className="max-w-lg mx-auto space-y-10">
-          {panels.map(({ id, kicker, headline, body }) => (
-            <div key={id}>
+      {/* ── Mobile: sticky video + scroll-animated panels ── */}
+      <section className="lg:hidden bg-white border-t border-zinc-100">
+        {/* Sticky product visual */}
+        <div className="sticky top-0 z-10 h-[45dvh] bg-zinc-800 overflow-hidden flex items-center justify-center">
+          <video
+            ref={mobileVideoRef}
+            muted
+            playsInline
+            autoPlay
+            loop
+            preload="auto"
+            className="h-full w-full object-contain"
+          >
+            <source src="/videos/rotating-pest-control-backpack.mp4" type="video/mp4" />
+          </video>
+          {/* Fade bottom edge into the white panel area */}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-white pointer-events-none" />
+        </div>
+
+        {/* Panels scroll up over the sticky video */}
+        <div className="max-w-lg mx-auto px-6 pt-4 pb-16 space-y-14">
+          {panels.map(({ id, kicker, headline, body }, i) => (
+            <div
+              key={id}
+              ref={(el) => { mobilePanelRefs.current[i] = el; }}
+              style={reduce ? undefined : {
+                opacity: 0,
+                transform: "translateY(24px)",
+                transition: "opacity 0.65s ease-out, transform 0.65s ease-out",
+              }}
+            >
               <p className="text-xs font-semibold text-emerald-600 uppercase tracking-widest mb-2">
                 {kicker}
               </p>
