@@ -1,3 +1,6 @@
+import { Star } from "@phosphor-icons/react/dist/ssr";
+import { AnimatedSection, AnimatedItem } from "@/components/ui/AnimatedSection";
+
 const quotes = [
   {
     id: "mia",
@@ -21,37 +24,45 @@ const quotes = [
 
 export default function Testimonials() {
   return (
-    <section id="testimonials" className="py-24 bg-zinc-50 border-t border-zinc-100">
+    <section id="testimonials" className="py-14 md:py-24 bg-zinc-50 border-t border-zinc-100">
       <div className="max-w-6xl mx-auto px-6">
 
-        <div className="mb-14">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-900 mb-3">
-            What customers say
-          </h2>
-          <p className="text-zinc-500 text-lg">
-            Every review is from a verified customer.
-          </p>
-        </div>
+        <AnimatedSection className="flex flex-col items-center text-center mb-10 md:mb-16">
+          <AnimatedItem>
+            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-widest mb-3">
+              Reviews
+            </p>
+          </AnimatedItem>
+          <AnimatedItem>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-900 mb-4">
+              What customers say
+            </h2>
+          </AnimatedItem>
+          <AnimatedItem>
+            <p className="text-zinc-500 text-lg">
+              Every review is from a verified customer.
+            </p>
+          </AnimatedItem>
+        </AnimatedSection>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <AnimatedSection className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {quotes.map((q) => (
-            <div
-              key={q.id}
-              className="bg-white border border-zinc-200 rounded-xl p-7 flex flex-col justify-between gap-8"
-            >
-              <div>
-                <span className="block text-4xl font-extrabold text-emerald-100 leading-none mb-4 select-none">
-                  &ldquo;
-                </span>
-                <p className="text-zinc-700 text-sm leading-relaxed">{q.body}</p>
+            <AnimatedItem key={q.id}>
+              <div className="card-surface p-5 sm:p-8 flex flex-col gap-6 h-full">
+                <div className="flex gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} size={14} weight="fill" className="text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-zinc-700 text-sm leading-relaxed flex-1">{q.body}</p>
+                <div className="pt-5 border-t border-zinc-100">
+                  <p className="font-semibold text-zinc-900 text-sm">{q.name}</p>
+                  <p className="text-zinc-400 text-xs mt-0.5">{q.role}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-zinc-900 text-sm">{q.name}</p>
-                <p className="text-zinc-400 text-xs mt-0.5">{q.role}</p>
-              </div>
-            </div>
+            </AnimatedItem>
           ))}
-        </div>
+        </AnimatedSection>
 
       </div>
     </section>

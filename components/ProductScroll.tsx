@@ -3,6 +3,9 @@
 import { useRef, useEffect } from "react";
 import { useReducedMotion } from "motion/react";
 
+// Frames extracted per second of video — more = smoother, slower to load
+const EXTRACT_FPS = 12;
+
 const panels = [
   {
     id: "p1",
@@ -26,86 +29,114 @@ const panels = [
 
 export default function ProductScroll() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef  = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const panel1Ref = useRef<HTMLDivElement>(null);
   const panel2Ref = useRef<HTMLDivElement>(null);
   const panel3Ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
 
   useEffect(() => {
-    const video = videoRef.current;
-    const section = sectionRef.current;
-    if (!video || !section) return;
+    if (reduce) return;
 
-    let ctx: { revert: () => void } | null = null;
+    const video   = videoRef.current;
+    const canvas  = canvasRef.current;
+    const section = sectionRef.current;
+    if (!video || !canvas || !section) return;
+
+    let mounted = true;
+    let gsapCtx: { revert: () => void } | null = null;
+    const frames: ImageBitmap[] = [];
+
+    const seekTo = (t: number) =>
+      new Promise<void>(resolve => {
+        const onSeeked = () => resolve();
+        video.addEventListener("seeked", onSeeked, { once: true });
+        video.currentTime = t;
+      });
 
     const init = async () => {
-      const { gsap } = await import("gsap");
+      const { gsap }         = await import("gsap");
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
+      if (!mounted) return;
+
       gsap.registerPlugin(ScrollTrigger);
 
-      ctx = gsap.context(() => {
+      // ── Size canvas to video's native resolution ──
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d")!;
+
+      // Draw frame 0 immediately so the canvas is never blank
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // totalFrames is known from metadata — used in onUpdate before extraction finishes
+      const totalFrames = Math.ceil(video.duration * EXTRACT_FPS);
+
+      // ── Set up ScrollTrigger immediately — no waiting for frame extraction ──
+      gsapCtx = gsap.context(() => {
         const mm = gsap.matchMedia();
 
         mm.add("(min-width: 1024px)", () => {
-          // Hand off playback control to scroll
-          video.pause();
+          // Each panel gets an equal third of the scroll distance.
+          // Crossfades land at exactly 1/3 (3.0) and 2/3 (6.0) of the 9-unit timeline.
+          const tl = gsap.timeline();
+          tl.to(panel1Ref.current, { opacity: 0, y: -24, duration: 0.5 }, 2.5);
+          tl.fromTo(panel2Ref.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5 }, 2.5);
+          tl.to(panel2Ref.current, { opacity: 0, y: -24, duration: 0.5 }, 5.5);
+          tl.fromTo(panel3Ref.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5 }, 5.5);
+          tl.to({}, { duration: 3.0 }, 6.0); // panel 3 holds through the final third
 
-          const tl = gsap.timeline({
-            scrollTrigger: {
-              trigger: section,
-              start: "top top",
-              end: "+=300%",
-              pin: true,
-              scrub: 1.2,
-              anticipatePin: 1,
+          // Single ScrollTrigger owns both pin and scrub — avoids pin-spacer
+          // layout shift breaking a second trigger's start/end calculation.
+          ScrollTrigger.create({
+            trigger: section,
+            start: "top top",
+            end: "+=300%",
+            pin: true,
+            anticipatePin: 1,
+            scrub: true,
+            animation: tl,
+            onUpdate(self) {
+              // Use totalFrames (not frames.length) so the index is correct even
+              // while extraction is still in progress in the background.
+              const idx = Math.round(self.progress * totalFrames);
+              const frame = frames[idx];
+              if (frame) ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
             },
           });
 
-          // Video scrubs frame-by-frame across the entire scroll
-          tl.to(video, {
-            currentTime: video.duration,
-            ease: "none",
-            duration: 9,
-          }, 0);
-
-          // Panel 1 exits ~30% through
-          tl.to(panel1Ref.current, { opacity: 0, y: -24, duration: 0.4 }, 2.4);
-
-          // Panel 2 enters ~33%, exits ~63%
-          tl.fromTo(
-            panel2Ref.current,
-            { opacity: 0, y: 24 },
-            { opacity: 1, y: 0, duration: 0.4 },
-            2.8
-          );
-          tl.to(panel2Ref.current, { opacity: 0, y: -24, duration: 0.4 }, 5.4);
-
-          // Panel 3 enters ~66%, stays to end
-          tl.fromTo(
-            panel3Ref.current,
-            { opacity: 0, y: 24 },
-            { opacity: 1, y: 0, duration: 0.4 },
-            5.8
-          );
-
-          return () => {
-            video.currentTime = 0;
-          };
+          return () => {};
         });
       }, section);
+
+      // ── Extract frames in the background — animation is already live above ──
+      // Seeks are slow on standard H.264 because each one must decode from the
+      // nearest keyframe. Pulling every frame into ImageBitmap means
+      // onUpdate becomes a simple array lookup + canvas draw — always < 1ms.
+      for (let i = 0; i <= totalFrames; i++) {
+        if (!mounted) return;
+        await seekTo((i / totalFrames) * video.duration);
+        if (!mounted) return;
+        frames[i] = await createImageBitmap(video);
+        // Yield to the browser between seeks so the page stays responsive
+        await new Promise<void>(r => requestAnimationFrame(() => r()));
+      }
     };
 
-    if (reduce) return;
+    const onMetadata = () => { if (mounted) init(); };
 
     if (video.readyState >= 1) {
       init();
     } else {
-      video.addEventListener("loadedmetadata", init, { once: true });
+      video.addEventListener("loadedmetadata", onMetadata, { once: true });
     }
 
     return () => {
-      ctx?.revert();
+      mounted = false;
+      video.removeEventListener("loadedmetadata", onMetadata);
+      gsapCtx?.revert();
+      frames.forEach(f => f.close());
     };
   }, [reduce]);
 
@@ -116,13 +147,33 @@ export default function ProductScroll() {
       {/* ── Desktop: scroll-pinned product reveal ── */}
       <section
         ref={sectionRef}
-        className="hidden lg:block relative bg-white border-t border-zinc-100 overflow-hidden"
+        className="hidden lg:block relative bg-white border-t border-zinc-100"
         style={{ height: "100vh" }}
       >
-        <div className="h-full grid grid-cols-2 items-center max-w-7xl mx-auto px-12 gap-8">
+        {/* Hidden video — source for frame extraction only */}
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          preload="auto"
+          className="absolute opacity-0 pointer-events-none"
+          aria-hidden="true"
+        >
+          <source src="/videos/rotating-pest-control-backpack.mp4" type="video/mp4" />
+        </video>
 
-          {/* Left: cycling text panels */}
-          <div className="relative h-full">
+        {/* Canvas renders the pre-extracted frames — instant draw, no seek lag */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full object-contain"
+        />
+
+        {/* Gradient so text stays legible over the canvas */}
+        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/60 to-transparent pointer-events-none" />
+
+        {/* Cycling text panels */}
+        <div className="relative z-10 h-full max-w-7xl mx-auto px-12">
+          <div className="relative h-full w-1/2">
             {panels.map(({ id, kicker, headline, body }, i) => (
               <div
                 key={id}
@@ -143,20 +194,6 @@ export default function ProductScroll() {
               </div>
             ))}
           </div>
-
-          {/* Right: video frame-scrubbed by scroll */}
-          <div className="flex items-center justify-center h-full">
-            <video
-              ref={videoRef}
-              muted
-              playsInline
-              preload="auto"
-              className="w-full max-h-[80vh] object-contain"
-            >
-              <source src="/videos/rotating-pest-control-backpack.mp4" type="video/mp4" />
-            </video>
-          </div>
-
         </div>
       </section>
 

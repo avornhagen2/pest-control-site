@@ -1,3 +1,5 @@
+import { AnimatedSection, AnimatedItem } from "@/components/ui/AnimatedSection";
+
 const steps = [
   {
     number: "01",
@@ -21,29 +23,44 @@ const steps = [
 
 export default function Process() {
   return (
-    <section id="process" className="py-24 bg-white border-t border-zinc-100">
+    <section id="process" className="py-14 md:py-24 bg-white border-t border-zinc-100">
       <div className="max-w-6xl mx-auto px-6">
 
-        <div className="mb-14">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-900 mb-3">
-            How it works
-          </h2>
-          <p className="text-zinc-500 text-lg max-w-[44ch]">
-            Three steps. No surprises. A written guarantee at each one.
-          </p>
-        </div>
+        <AnimatedSection className="flex flex-col items-center text-center mb-10 md:mb-16">
+          <AnimatedItem>
+            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-widest mb-3">
+              Process
+            </p>
+          </AnimatedItem>
+          <AnimatedItem>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-900 mb-4">
+              How it works
+            </h2>
+          </AnimatedItem>
+          <AnimatedItem>
+            <p className="text-zinc-500 text-lg max-w-[44ch]">
+              Three steps. No surprises. A written guarantee at each one.
+            </p>
+          </AnimatedItem>
+        </AnimatedSection>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-zinc-200">
+        <AnimatedSection className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {steps.map(({ number, title, description }) => (
-            <div key={number} className="py-8 md:py-0 md:px-10 first:md:pl-0 last:md:pr-0">
-              <span className="block text-6xl font-extrabold text-zinc-100 leading-none mb-6 select-none">
-                {number}
-              </span>
-              <h3 className="text-lg font-bold text-zinc-900 mb-2">{title}</h3>
-              <p className="text-zinc-500 text-sm leading-relaxed">{description}</p>
-            </div>
+            <AnimatedItem key={number}>
+              <div className="card-surface p-5 sm:p-8 flex flex-col gap-5 h-full">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
+                  <span className="text-emerald-600 font-extrabold text-sm tabular-nums">
+                    {number}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-zinc-900 mb-2">{title}</h3>
+                  <p className="text-zinc-500 text-sm leading-relaxed">{description}</p>
+                </div>
+              </div>
+            </AnimatedItem>
           ))}
-        </div>
+        </AnimatedSection>
 
       </div>
     </section>

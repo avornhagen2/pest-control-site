@@ -41,16 +41,16 @@ export default function Hero() {
       <div className="relative z-10 flex flex-col items-center text-center px-6 pt-16 max-w-3xl mx-auto w-full">
         <motion.h1
           {...enter(0.1)}
-          className="text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.05] text-white"
+          className="text-[1.75rem] sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.05] text-white"
         >
           Precision pest control
-          <br />
-          for <span className="text-emerald-400">homes</span> that matter.
+          <br className="hidden sm:block" />
+          {" "}for <span className="text-emerald-400">homes</span> that matter.
         </motion.h1>
 
         <motion.p
           {...enter(0.22)}
-          className="mt-6 text-lg text-zinc-200 leading-relaxed max-w-[44ch]"
+          className="mt-4 sm:mt-6 text-base sm:text-lg text-zinc-200 leading-relaxed max-w-[44ch]"
         >
           Licensed technicians. Discreet service. Guaranteed results in 48
           hours or we return at no charge.
@@ -58,7 +58,7 @@ export default function Hero() {
 
         <motion.div
           {...enter(0.34)}
-          className="mt-8 flex flex-wrap justify-center items-center gap-3"
+          className="mt-6 sm:mt-8 flex flex-wrap justify-center items-center gap-3"
         >
           <a
             href="#contact"
