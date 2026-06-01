@@ -1,9 +1,17 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 export default function Hero() {
   const reduce = useReducedMotion();
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.play().catch(() => {});
+  }, []);
 
   const enter = (delay: number) => ({
     initial: reduce ? false : { opacity: 0, y: 20 },
@@ -16,7 +24,7 @@ export default function Hero() {
 
       {/* Video layer with radial inward mask — fades edges into bg-zinc-50 */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 bg-zinc-800"
         style={{
           maskImage:
             "radial-gradient(ellipse 85% 85% at 50% 50%, black 35%, transparent 88%)",
@@ -25,10 +33,12 @@ export default function Hero() {
         }}
       >
         <video
+          ref={videoRef}
           autoPlay
           muted
           loop
           playsInline
+          preload="auto"
           className="absolute inset-0 w-full h-full object-cover"
         >
           <source src="/videos/ant-army-vs-barrier.mp4" type="video/mp4" />
